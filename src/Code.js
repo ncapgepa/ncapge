@@ -54,15 +54,18 @@ function submitForm(formObject) {
     // --- Lógica de Upload de Arquivos para o Google Drive ---
     let driveFolder = getOrCreateFolder(DRIVE_FOLDER_NAME);
     let submissionFolder = driveFolder.createFolder(`${protocolo} - ${formObject.nome}`);
-    let filesUrls = [];
-
+    
     // Itera sobre todas as chaves do objeto do formulário para encontrar arquivos
     for (let key in formObject) {
-      if (key.startsWith('doc_') && formObject[key] && formObject[key].getBlob) {
-        let fileBlob = formObject[key];
-        let file = submissionFolder.createFile(fileBlob);
-        filesUrls.push(file.getUrl());
+      // ******** INÍCIO DA CORREÇÃO ********
+      // A forma correta de identificar um Blob de um upload de formulário
+      // é verificar se é um objeto com métodos como 'getName' ou 'getContentType'.
+      // A verificação anterior '.getBlob' estava incorreta para este contexto.
+      if (key.startsWith('doc_') && formObject[key] && typeof formObject[key].getName === 'function') {
+        let fileBlob = formObject[key]; // O objeto já é o blob
+        submissionFolder.createFile(fileBlob);
       }
+      // ******** FIM DA CORREÇÃO ********
     }
     const folderUrl = submissionFolder.getUrl();
 
