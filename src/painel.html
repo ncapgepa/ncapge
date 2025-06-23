@@ -6,16 +6,75 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: Arial, sans-serif; background: #f9f9f9; }
-    .container { max-width: 1000px; margin: 40px auto; background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    h1 { color: #1a237e; }
-    table { width: 100%; border-collapse: collapse; margin-top: 24px; }
-    th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
-    th { background: #e3e6f3; }
+    :root {
+      --primary-color: #004d40;
+      --secondary-color: #e0f2f1;
+      --accent-color: #00796b;
+      --table-header-bg: #b2dfdb;
+    }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+      background: #f1f8e9; 
+    }
+    .container { 
+      max-width: 1000px; 
+      margin: 40px auto; 
+      background: #fff; 
+      padding: 32px; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+    }
+    h1 { 
+      color: var(--primary-color);
+    }
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      margin-top: 24px; 
+    }
+    th, td { 
+      border: 1px solid #ccc; 
+      padding: 12px; 
+      text-align: left; 
+    }
+    th { 
+      background: var(--table-header-bg);
+      color: var(--primary-color);
+      font-weight: 600;
+    }
     tr:nth-child(even) { background: #f9f9f9; }
-    .filtros { margin-bottom: 16px; display: flex; gap: 16px; align-items: center; }
-    .btn { background: #1a237e; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
-    #detalhes { background: #fafafa; border: 1px solid #eee; padding: 20px; border-radius: 5px; }
+    tr:hover { background: var(--secondary-color); }
+    .btn { 
+      background: var(--primary-color); 
+      color: #fff; 
+      border: none; 
+      padding: 8px 16px; 
+      border-radius: 4px; 
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .btn:hover {
+      background: var(--accent-color);
+    }
+    #detalhes { 
+      background: #fafafa; 
+      border: 1px solid #eee; 
+      padding: 20px; 
+      border-radius: 5px; 
+      border-left: 4px solid var(--accent-color);
+    }
+    select, textarea {
+      width: 100%; 
+      padding: 10px; 
+      margin-top: 5px; 
+      border-radius: 5px; 
+      border: 1px solid #ccc; 
+      box-sizing: border-box;
+    }
+    label {
+      font-weight: 600;
+      color: #444;
+    }
   </style>
 </head>
 <body>
@@ -40,7 +99,7 @@
   </div>
 
   <script>
-    let allRequests = []; // Armazena todos os dados para filtragem no cliente
+    let allRequests = []; 
 
     function carregarTabela() {
       google.script.run.withSuccessHandler(function(lista) {
@@ -56,7 +115,6 @@
         tbody.innerHTML = '';
         data.forEach(function(item) {
           var tr = document.createElement('tr');
-          // Agora usamos os nomes das propriedades do objeto: item.protocolo, item.data, etc.
           tr.innerHTML = `<td>${item.protocolo}</td>
                           <td>${item.data}</td>
                           <td>${item.nome}</td>
@@ -85,8 +143,9 @@
           </p>
           <hr>
           <h3>Andamento</h3>
-          <div><b>Histórico Atual:</b><pre style="background:#eee;padding:5px;border-radius:3px;">${dados.historico || ''}</pre></div>
-          <label><b>Novo Status:</b></label>
+          <div><b>Histórico Atual:</b><pre style="background:#eee;padding:5px;border-radius:3px;white-space: pre-wrap;">${dados.historico || ''}</pre></div>
+          <br>
+          <label for="novo-status"><b>Novo Status:</b></label>
           <select id="novo-status">
               <option>Novo</option>
               <option>Em Análise</option>
@@ -95,12 +154,12 @@
               <option>Indeferido</option>
           </select>
           <br><br>
-          <label><b>Adicionar Observação ao Histórico:</b></label>
-          <textarea id="nova-observacao" rows="3" style="width:100%"></textarea>
+          <label for="nova-observacao"><b>Adicionar Observação ao Histórico:</b></label>
+          <textarea id="nova-observacao" rows="3"></textarea>
           <br><br>
           <button class="btn" onclick="salvarAlteracoes('${protocolo}')">Salvar Alterações</button>`;
         document.getElementById('novo-status').value = dados.status;
-        window.scrollTo(0, document.body.scrollHeight); // Rola para o final da página
+        div.scrollIntoView({ behavior: 'smooth' });
       }).consultarProtocolo(protocolo);
     }
 
@@ -117,11 +176,10 @@
       google.script.run.withSuccessHandler(function() {
         alert('Alterações salvas com sucesso!');
         document.getElementById('detalhes').style.display = 'none';
-        carregarTabela(); // Recarrega a tabela para mostrar o novo status
+        carregarTabela(); 
       }).updateStatus(protocolo, status, observacao, atendente);
     }
 
-    // Carrega a tabela assim que a página é aberta
     window.onload = carregarTabela;
   </script>
 </body>
