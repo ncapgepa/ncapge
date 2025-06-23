@@ -1,99 +1,127 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Painel do Atendente - SisNCA</title>
+  <base target="_top">
+  <title>Painel do Atendente</title>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: Arial, sans-serif; background: #f7f7f7; }
-    .container { max-width: 900px; margin: 40px auto; background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
+    body { font-family: Arial, sans-serif; background: #f9f9f9; }
+    .container { max-width: 1000px; margin: 40px auto; background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     h1 { color: #1a237e; }
     table { width: 100%; border-collapse: collapse; margin-top: 24px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
     th { background: #e3e6f3; }
     tr:nth-child(even) { background: #f9f9f9; }
-    .filtros { margin-bottom: 16px; }
-    .btn { background: #1a237e; color: #fff; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; }
-    .btn:disabled { background: #aaa; }
+    .filtros { margin-bottom: 16px; display: flex; gap: 16px; align-items: center; }
+    .btn { background: #1a237e; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+    #detalhes { background: #fafafa; border: 1px solid #eee; padding: 20px; border-radius: 5px; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Painel do Atendente</h1>
-    <div class="filtros">
-      <label>Status:
-        <select id="filtro-status">
-          <option value="">Todos</option>
-          <option>Novo</option>
-          <option>Em Análise</option>
-          <option>Pendente</option>
-          <option>Deferido</option>
-          <option>Indeferido</option>
-        </select>
-      </label>
-      <label style="margin-left:16px;">Protocolo:
-        <input type="text" id="filtro-protocolo" placeholder="Buscar protocolo">
-      </label>
-      <label style="margin-left:16px;">Nome:
-        <input type="text" id="filtro-nome" placeholder="Buscar nome">
-      </label>
-      <button class="btn" onclick="carregarTabela()">Filtrar</button>
+    <div id="loading" style="text-align:center;">Carregando solicitações...</div>
+    <div id="main-content" style="display:none;">
+      <table id="tabela-solicitacoes">
+        <thead>
+          <tr>
+            <th>Protocolo</th>
+            <th>Data</th>
+            <th>Nome</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div id="detalhes" style="display:none; margin-top:32px;"></div>
     </div>
-    <table id="tabela-solicitacoes">
-      <thead>
-        <tr>
-          <th>Protocolo</th>
-          <th>Data</th>
-          <th>Nome</th>
-          <th>Status</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <div id="detalhes" style="display:none; margin-top:32px;"></div>
   </div>
+
   <script>
+    let allRequests = []; // Armazena todos os dados para filtragem no cliente
+
     function carregarTabela() {
       google.script.run.withSuccessHandler(function(lista) {
-        var tbody = document.querySelector('#tabela-solicitacoes tbody');
-        tbody.innerHTML = '';
-        lista.forEach(function(item) {
-          var tr = document.createElement('tr');
-          tr.innerHTML = '<td>' + item.protocolo + '</td>' +
-                         '<td>' + item.data + '</td>' +
-                         '<td>' + item.nome + '</td>' +
-                         '<td>' + item.status + '</td>' +
-                         '<td><button class="btn" onclick="verDetalhes(\'' + item.protocolo + '\')">Ver Detalhes</button></td>';
-          tbody.appendChild(tr);
-        });
+        allRequests = lista;
+        renderTable(allRequests);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
       }).getRequests();
     }
+
+    function renderTable(data) {
+        var tbody = document.querySelector('#tabela-solicitacoes tbody');
+        tbody.innerHTML = '';
+        data.forEach(function(item) {
+          var tr = document.createElement('tr');
+          // Agora usamos os nomes das propriedades do objeto: item.protocolo, item.data, etc.
+          tr.innerHTML = `<td>${item.protocolo}</td>
+                          <td>${item.data}</td>
+                          <td>${item.nome}</td>
+                          <td>${item.status}</td>
+                          <td><button class="btn" onclick="verDetalhes('${item.protocolo}')">Ver Detalhes</button></td>`;
+          tbody.appendChild(tr);
+        });
+    }
+
     function verDetalhes(protocolo) {
       google.script.run.withSuccessHandler(function(dados) {
+        if (dados.erro) {
+            alert(dados.erro);
+            return;
+        }
         var div = document.getElementById('detalhes');
         div.style.display = 'block';
-        div.innerHTML = '<h2>Detalhes do Protocolo ' + protocolo + '</h2>' +
-          '<p><b>Nome:</b> ' + dados.nome + '<br>' +
-          '<b>E-mail:</b> ' + dados.email + '<br>' +
-          '<b>Telefone:</b> ' + dados.telefone + '<br>' +
-          '<b>Tipo:</b> ' + dados.tipo + '<br>' +
-          '<b>CDAs:</b> ' + dados.cdas + '<br>' +
-          '<b>Status:</b> <select id="novo-status"><option>Novo</option><option>Em Análise</option><option>Pendente</option><option>Deferido</option><option>Indeferido</option></select><br>' +
-          '<b>Histórico:</b><br><textarea id="novo-historico" rows="4" style="width:100%">' + (dados.historico||'') + '</textarea><br>' +
-          '<b>Documentos:</b> <a href="' + dados.linkDocumentos + '" target="_blank">Abrir Pasta</a><br>' +
-          '<button class="btn" onclick="salvarAlteracoes(\'' + protocolo + '\')">Salvar Alterações</button>';
+        div.innerHTML = `<h2>Detalhes do Protocolo ${protocolo}</h2>
+          <p>
+            <b>Nome:</b> ${dados.nome}<br>
+            <b>E-mail:</b> ${dados.email}<br>
+            <b>Telefone:</b> ${dados.telefone}<br>
+            <b>Tipo:</b> ${dados.tipo}<br>
+            <b>CDAs:</b> ${dados.cdas}<br>
+            <b>Documentos:</b> <a href="${dados.linkDocumentos}" target="_blank">Abrir Pasta de Documentos</a>
+          </p>
+          <hr>
+          <h3>Andamento</h3>
+          <div><b>Histórico Atual:</b><pre style="background:#eee;padding:5px;border-radius:3px;">${dados.historico || ''}</pre></div>
+          <label><b>Novo Status:</b></label>
+          <select id="novo-status">
+              <option>Novo</option>
+              <option>Em Análise</option>
+              <option>Pendente</option>
+              <option>Deferido</option>
+              <option>Indeferido</option>
+          </select>
+          <br><br>
+          <label><b>Adicionar Observação ao Histórico:</b></label>
+          <textarea id="nova-observacao" rows="3" style="width:100%"></textarea>
+          <br><br>
+          <button class="btn" onclick="salvarAlteracoes('${protocolo}')">Salvar Alterações</button>`;
         document.getElementById('novo-status').value = dados.status;
+        window.scrollTo(0, document.body.scrollHeight); // Rola para o final da página
       }).consultarProtocolo(protocolo);
     }
+
     function salvarAlteracoes(protocolo) {
       var status = document.getElementById('novo-status').value;
-      var historico = document.getElementById('novo-historico').value;
-      var atendente = 'Atendente'; // Pode ser substituído pelo login Google
+      var observacao = document.getElementById('nova-observacao').value;
+      var atendente = 'Atendente Logado'; // Futuramente, pode pegar o e-mail do usuário logado
+      
+      if (!observacao) {
+          alert('Por favor, adicione uma observação sobre a alteração.');
+          return;
+      }
+
       google.script.run.withSuccessHandler(function() {
-        alert('Alterações salvas!');
-        carregarTabela();
-      }).updateStatus(protocolo, status, historico, atendente);
+        alert('Alterações salvas com sucesso!');
+        document.getElementById('detalhes').style.display = 'none';
+        carregarTabela(); // Recarrega a tabela para mostrar o novo status
+      }).updateStatus(protocolo, status, observacao, atendente);
     }
+
+    // Carrega a tabela assim que a página é aberta
     window.onload = carregarTabela;
   </script>
 </body>
