@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Consulta de Protocolo</title>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f7f7f7; }
+    .container { max-width: 400px; margin: 60px auto; background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
+    h1 { color: #1a237e; }
+    input, button { width: 100%; padding: 10px; margin-top: 12px; border-radius: 4px; border: 1px solid #ccc; }
+    button { background: #1a237e; color: #fff; border: none; font-size: 1.1em; cursor: pointer; }
+    button:disabled { background: #aaa; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Consulta de Protocolo</h1>
+    <input type="text" id="protocolo" placeholder="Digite seu protocolo">
+    <button onclick="consultar()">Consultar</button>
+    <div id="resultado" style="margin-top:24px;"></div>
+  </div>
+  <script>
+    function consultar() {
+      var protocolo = document.getElementById('protocolo').value.trim();
+      if (!protocolo) return;
+      google.script.run.withSuccessHandler(function(resp) {
+        if (resp && resp.protocolo) {
+          document.getElementById('resultado').innerHTML = '<b>Protocolo:</b> ' + resp.protocolo + '<br><b>Data:</b> ' + resp.data + '<br><b>Status:</b> ' + resp.status;
+        } else {
+          document.getElementById('resultado').innerHTML = 'Protocolo não encontrado.';
+        }
+      }).consultarProtocolo(protocolo);
+    }
+  </script>
+</body>
+</html>

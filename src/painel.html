@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Painel do Atendente - SisNCA</title>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f7f7f7; }
+    .container { max-width: 900px; margin: 40px auto; background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
+    h1 { color: #1a237e; }
+    table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #e3e6f3; }
+    tr:nth-child(even) { background: #f9f9f9; }
+    .filtros { margin-bottom: 16px; }
+    .btn { background: #1a237e; color: #fff; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; }
+    .btn:disabled { background: #aaa; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Painel do Atendente</h1>
+    <div class="filtros">
+      <label>Status:
+        <select id="filtro-status">
+          <option value="">Todos</option>
+          <option>Novo</option>
+          <option>Em Análise</option>
+          <option>Pendente</option>
+          <option>Deferido</option>
+          <option>Indeferido</option>
+        </select>
+      </label>
+      <label style="margin-left:16px;">Protocolo:
+        <input type="text" id="filtro-protocolo" placeholder="Buscar protocolo">
+      </label>
+      <label style="margin-left:16px;">Nome:
+        <input type="text" id="filtro-nome" placeholder="Buscar nome">
+      </label>
+      <button class="btn" onclick="carregarTabela()">Filtrar</button>
+    </div>
+    <table id="tabela-solicitacoes">
+      <thead>
+        <tr>
+          <th>Protocolo</th>
+          <th>Data</th>
+          <th>Nome</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div id="detalhes" style="display:none; margin-top:32px;"></div>
+  </div>
+  <script>
+    function carregarTabela() {
+      google.script.run.withSuccessHandler(function(lista) {
+        var tbody = document.querySelector('#tabela-solicitacoes tbody');
+        tbody.innerHTML = '';
+        lista.forEach(function(item) {
+          var tr = document.createElement('tr');
+          tr.innerHTML = '<td>' + item.protocolo + '</td>' +
+                         '<td>' + item.data + '</td>' +
+                         '<td>' + item.nome + '</td>' +
+                         '<td>' + item.status + '</td>' +
+                         '<td><button class="btn" onclick="verDetalhes(\'' + item.protocolo + '\')">Ver Detalhes</button></td>';
+          tbody.appendChild(tr);
+        });
+      }).getRequests();
+    }
+    function verDetalhes(protocolo) {
+      google.script.run.withSuccessHandler(function(dados) {
+        var div = document.getElementById('detalhes');
+        div.style.display = 'block';
+        div.innerHTML = '<h2>Detalhes do Protocolo ' + protocolo + '</h2>' +
+          '<p><b>Nome:</b> ' + dados.nome + '<br>' +
+          '<b>E-mail:</b> ' + dados.email + '<br>' +
+          '<b>Telefone:</b> ' + dados.telefone + '<br>' +
+          '<b>Tipo:</b> ' + dados.tipo + '<br>' +
+          '<b>CDAs:</b> ' + dados.cdas + '<br>' +
+          '<b>Status:</b> <select id="novo-status"><option>Novo</option><option>Em Análise</option><option>Pendente</option><option>Deferido</option><option>Indeferido</option></select><br>' +
+          '<b>Histórico:</b><br><textarea id="novo-historico" rows="4" style="width:100%">' + (dados.historico||'') + '</textarea><br>' +
+          '<b>Documentos:</b> <a href="' + dados.linkDocumentos + '" target="_blank">Abrir Pasta</a><br>' +
+          '<button class="btn" onclick="salvarAlteracoes(\'' + protocolo + '\')">Salvar Alterações</button>';
+        document.getElementById('novo-status').value = dados.status;
+      }).consultarProtocolo(protocolo);
+    }
+    function salvarAlteracoes(protocolo) {
+      var status = document.getElementById('novo-status').value;
+      var historico = document.getElementById('novo-historico').value;
+      var atendente = 'Atendente'; // Pode ser substituído pelo login Google
+      google.script.run.withSuccessHandler(function() {
+        alert('Alterações salvas!');
+        carregarTabela();
+      }).updateStatus(protocolo, status, historico, atendente);
+    }
+    window.onload = carregarTabela;
+  </script>
+</body>
+</html>

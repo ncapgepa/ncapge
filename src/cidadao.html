@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Análise de Prescrição de Dívida Ativa</title>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f7f7f7; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
+    h1 { color: #1a237e; }
+    label { display: block; margin-top: 16px; font-weight: bold; }
+    input, select, textarea { width: 100%; padding: 8px; margin-top: 4px; border-radius: 4px; border: 1px solid #ccc; }
+    .cda-list { margin-bottom: 16px; }
+    .add-cda { margin-top: 8px; }
+    .termos { background: #f1f1f1; padding: 12px; border-radius: 4px; margin-top: 16px; font-size: 0.95em; }
+    .submit-btn { background: #1a237e; color: #fff; border: none; padding: 12px 24px; border-radius: 4px; margin-top: 20px; font-size: 1.1em; cursor: pointer; }
+    .submit-btn:disabled { background: #aaa; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Análise de Prescrição de Dívida Ativa</h1>
+    <div id="instrucoes">
+      <p><b>Tipos de Requerente e Documentos Necessários:</b></p>
+      <ul>
+        <li><b>Pessoa Física:</b> Anexar documento de identificação válido, com foto.</li>
+        <li><b>Empresário Individual:</b> Anexar cópia de documento que comprove a condição de empresário.</li>
+        <li><b>Sócio Administrador:</b> Anexar cópia do CNPJ, do contrato e alterações.</li>
+        <li><b>Procurador:</b> Anexar procuração com poderes específicos para requerer o reconhecimento da prescrição do crédito fiscal perante a PGE, cópia do RG/CPF do outorgado.</li>
+      </ul>
+      <p><b>Sobre as CDAs:</b> Digite o(s) número(s) da(s) CDA(s) uma a uma. A prescrição ocorre após 5 anos do débito e desde que não tenha havido causa interruptiva, como parcelamento, defesa em AINF e citação válida em execução fiscal.</p>
+    </div>
+    <form id="form-solicitacao">
+      <label>Nome do Titular / Representante Legal</label>
+      <input type="text" name="nome" required>
+      <label>E-mail</label>
+      <input type="email" name="email" required>
+      <label>Telefone de contato (com DDD)</label>
+      <input type="text" name="telefone" pattern="\(\d{2}\) \d{4,5}-\d{4}" placeholder="(91) 99999-8888" required>
+      <label>Tipo de Requerente</label>
+      <select name="tipo" id="tipo-requerente" required>
+        <option value="">Selecione...</option>
+        <option value="Pessoa Física">Pessoa Física</option>
+        <option value="Empresário Individual">Empresário Individual</option>
+        <option value="Sócio Administrador">Sócio Administrador</option>
+        <option value="Procurador">Procurador</option>
+      </select>
+      <div id="documentos"></div>
+      <label>CDAs</label>
+      <div class="cda-list" id="cda-list">
+        <input type="text" name="cda[]" required placeholder="Digite o número da CDA">
+      </div>
+      <button type="button" class="add-cda" onclick="addCDA()">+ Adicionar outra CDA</button>
+      <div class="termos">
+        <input type="checkbox" id="aceite" required>
+        <label for="aceite" style="display:inline;font-weight:normal;">Li e concordo com os termos.</label>
+        <p style="font-size:0.95em; margin-top:8px;">Caso seu pedido já tenha sido levado a protesto ou à Ação de Execução Fiscal, fica ciente o contribuinte que é o responsável pelo pagamento das custas devidas.<br><br>Ao apertar no botão Enviar deste formulário, você declara estar ciente de que está fornecendo voluntariamente seus dados pessoais, incluindo, mas não se limitando a, nome, CPF, endereço e informações financeiras, à Fazenda Pública Estadual. Reconhecendo que esses dados serão utilizados exclusivamente para fins de administração tributária, fiscalização, arrecadação, e demais procedimentos relacionados à gestão fiscal do Estado.<br><br>Declara estar ciente de que seus dados serão tratados em conformidade com as disposições da Lei Geral de Proteção de Dados (Lei nº 13.709/2018) e que tem o direito de solicitar acesso, correção, limitação ou exclusão dos seus dados pessoais a qualquer momento, conforme previsto em lei, bem como dá seu consentimento livre, expresso e informado para que a Fazenda Pública Estadual processe meus dados pessoais conforme descrito acima.</p>
+      </div>
+      <button type="submit" class="submit-btn" id="enviar-btn" disabled>Enviar Solicitação</button>
+    </form>
+    <div id="mensagem-sucesso" style="display:none; margin-top:20px;"></div>
+  </div>
+  <script>
+    document.getElementById('aceite').addEventListener('change', function() {
+      document.getElementById('enviar-btn').disabled = !this.checked;
+    });
+    document.getElementById('tipo-requerente').addEventListener('change', function() {
+      var tipo = this.value;
+      var docDiv = document.getElementById('documentos');
+      docDiv.innerHTML = '';
+      if (tipo === 'Pessoa Física') {
+        docDiv.innerHTML = '<label>Anexar documento de identificação (PDF, JPG, PNG)</label><input type="file" name="doc_id" accept=".pdf,.jpg,.jpeg,.png" required>';
+      } else if (tipo === 'Empresário Individual') {
+        docDiv.innerHTML = '<label>Anexar documento que comprove a condição de empresário</label><input type="file" name="doc_empresario" accept=".pdf,.jpg,.jpeg,.png" required>';
+      } else if (tipo === 'Sócio Administrador') {
+        docDiv.innerHTML = '<label>Anexar CNPJ</label><input type="file" name="doc_cnpj" accept=".pdf,.jpg,.jpeg,.png" required><label>Anexar Contrato</label><input type="file" name="doc_contrato" accept=".pdf,.jpg,.jpeg,.png" required><label>Anexar Alterações</label><input type="file" name="doc_alteracoes" accept=".pdf,.jpg,.jpeg,.png" required>';
+      } else if (tipo === 'Procurador') {
+        docDiv.innerHTML = '<label>Anexar Procuração</label><input type="file" name="doc_procuracao" accept=".pdf,.jpg,.jpeg,.png" required><label>Anexar RG/CPF do Outorgado</label><input type="file" name="doc_rgcpf" accept=".pdf,.jpg,.jpeg,.png" required>';
+      }
+    });
+    function addCDA() {
+      var cdaList = document.getElementById('cda-list');
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.name = 'cda[]';
+      input.placeholder = 'Digite o número da CDA';
+      cdaList.appendChild(input);
+    }
+    document.getElementById('form-solicitacao').onsubmit = function(e) {
+      e.preventDefault();
+      document.getElementById('enviar-btn').disabled = true;
+      var form = document.getElementById('form-solicitacao');
+      var formData = new FormData(form);
+      google.script.run.withSuccessHandler(function(resp) {
+        document.getElementById('mensagem-sucesso').style.display = 'block';
+        document.getElementById('mensagem-sucesso').innerHTML = 'Sucesso! Seu protocolo é <b>' + resp.protocolo + '</b>';
+        form.reset();
+        document.getElementById('enviar-btn').disabled = false;
+      }).submitForm(Object.fromEntries(formData));
+    };
+  </script>
+</body>
+</html>
