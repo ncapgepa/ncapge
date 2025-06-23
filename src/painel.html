@@ -11,74 +11,32 @@
       --secondary-color: #e0f2f1;
       --accent-color: #00796b;
       --table-header-bg: #b2dfdb;
+      --danger-color: #c62828;
+      --danger-hover: #b71c1c;
     }
-    body { 
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
-      background: #f1f8e9; 
-    }
-    .container { 
-      max-width: 1000px; 
-      margin: 40px auto; 
-      background: #fff; 
-      padding: 32px; 
-      border-radius: 8px; 
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
-    }
-    h1 { 
-      color: var(--primary-color);
-    }
-    table { 
-      width: 100%; 
-      border-collapse: collapse; 
-      margin-top: 24px; 
-    }
-    th, td { 
-      border: 1px solid #ccc; 
-      padding: 12px; 
-      text-align: left; 
-    }
-    th { 
-      background: var(--table-header-bg);
-      color: var(--primary-color);
-      font-weight: 600;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f1f8e9; }
+    .container { max-width: 1000px; margin: 40px auto; background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    h1, h2 { color: var(--primary-color); }
+    table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+    th, td { border: 1px solid #ccc; padding: 12px; text-align: left; }
+    th { background: var(--table-header-bg); color: var(--primary-color); font-weight: 600; }
     tr:nth-child(even) { background: #f9f9f9; }
     tr:hover { background: var(--secondary-color); }
-    .btn { 
-      background: var(--primary-color); 
-      color: #fff; 
-      border: none; 
-      padding: 8px 16px; 
-      border-radius: 4px; 
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-    .btn:hover {
-      background: var(--accent-color);
-    }
-    #detalhes { 
-      background: #fafafa; 
-      border: 1px solid #eee; 
-      padding: 20px; 
-      border-radius: 5px; 
-      border-left: 4px solid var(--accent-color);
-    }
-    select, textarea {
-      width: 100%; 
-      padding: 10px; 
-      margin-top: 5px; 
-      border-radius: 5px; 
-      border: 1px solid #ccc; 
-      box-sizing: border-box;
-    }
-    label {
-      font-weight: 600;
-      color: #444;
-    }
+    .btn { background: var(--primary-color); color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; transition: background-color 0.3s; }
+    .btn:hover { background: var(--accent-color); }
+    .btn-danger { background: var(--danger-color); }
+    .btn-danger:hover { background: var(--danger-hover); }
+    #detalhes, #admin-panel { background: #fafafa; border: 1px solid #eee; padding: 20px; border-radius: 5px; border-left: 4px solid var(--accent-color); margin-top: 32px;}
+    select, textarea, input[type="text"], input[type="email"] { width: 100%; padding: 10px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+    label { font-weight: 600; color: #444; }
+    .user-info { text-align: right; color: #555; margin-bottom: 20px; }
   </style>
 </head>
 <body>
   <div class="container">
+    <div class="user-info">
+      Logado como: <strong><?!= userEmail ?></strong> (Função: <?!= userRole ?>)
+    </div>
     <h1>Painel do Atendente</h1>
     <div id="loading" style="text-align:center;">Carregando solicitações...</div>
     <div id="main-content" style="display:none;">
@@ -94,13 +52,35 @@
         </thead>
         <tbody></tbody>
       </table>
-      <div id="detalhes" style="display:none; margin-top:32px;"></div>
+      <div id="detalhes" style="display:none;"></div>
+      <!-- PAINEL DE ADMINISTRAÇÃO - VISÍVEL APENAS PARA ADMINS -->
+      <? if (userRole === 'admin') { ?>
+        <div id="admin-panel">
+          <h2>Gestão de Utilizadores</h2>
+          <table id="user-table">
+            <thead><tr><th>Email</th><th>Função</th><th>Ações</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <h3 style="margin-top: 30px;">Adicionar Novo Utilizador</h3>
+          <form id="add-user-form">
+            <label for="new-user-email">Email do Utilizador</label>
+            <input type="email" id="new-user-email" required>
+            <label for="new-user-role">Função</label>
+            <select id="new-user-role">
+              <option value="user">Utilizador</option>
+              <option value="admin">Administrador</option>
+            </select>
+            <br><br>
+            <button type="submit" class="btn">Adicionar/Atualizar Utilizador</button>
+          </form>
+        </div>
+      <? } ?>
     </div>
   </div>
-
   <script>
-    let allRequests = []; 
-
+    const LOGGED_IN_USER_EMAIL = "<?!= userEmail ?>";
+    const LOGGED_IN_USER_ROLE = "<?!= userRole ?>";
+    let allRequests = [];
     function carregarTabela() {
       google.script.run.withSuccessHandler(function(lista) {
         allRequests = lista;
@@ -109,7 +89,6 @@
         document.getElementById('main-content').style.display = 'block';
       }).getRequests();
     }
-
     function renderTable(data) {
         var tbody = document.querySelector('#tabela-solicitacoes tbody');
         tbody.innerHTML = '';
@@ -123,7 +102,6 @@
           tbody.appendChild(tr);
         });
     }
-
     function verDetalhes(protocolo) {
       google.script.run.withSuccessHandler(function(dados) {
         if (dados.erro) {
@@ -162,25 +140,60 @@
         div.scrollIntoView({ behavior: 'smooth' });
       }).consultarProtocolo(protocolo);
     }
-
     function salvarAlteracoes(protocolo) {
       var status = document.getElementById('novo-status').value;
       var observacao = document.getElementById('nova-observacao').value;
-      var atendente = 'Atendente Logado'; // Futuramente, pode pegar o e-mail do usuário logado
-      
       if (!observacao) {
           alert('Por favor, adicione uma observação sobre a alteração.');
           return;
       }
-
       google.script.run.withSuccessHandler(function() {
         alert('Alterações salvas com sucesso!');
         document.getElementById('detalhes').style.display = 'none';
         carregarTabela(); 
-      }).updateStatus(protocolo, status, observacao, atendente);
+      }).updateStatus(protocolo, status, observacao); // Não precisa de passar o atendente
     }
-
-    window.onload = carregarTabela;
+    function loadUsers() {
+      if (LOGGED_IN_USER_ROLE !== 'admin') return;
+      google.script.run.withSuccessHandler(function(users) {
+        const userTbody = document.querySelector('#user-table tbody');
+        userTbody.innerHTML = '';
+        users.forEach(user => {
+          const tr = document.createElement('tr');
+          let removeButton = `<button class="btn btn-danger" onclick="removeUser('${user.email}')">Remover</button>`;
+          if (user.email.toLowerCase() === LOGGED_IN_USER_EMAIL.toLowerCase()) {
+            removeButton = '';
+          }
+          tr.innerHTML = `<td>${user.email}</td><td>${user.role}</td><td>${removeButton}</td>`;
+          userTbody.appendChild(tr);
+        });
+      }).getUsers();
+    }
+    function removeUser(email) {
+      if (!confirm(`Tem a certeza que deseja remover o utilizador ${email}?`)) return;
+      google.script.run.withSuccessHandler(function(response) {
+        alert(response.message);
+        loadUsers();
+      }).withFailureHandler(function(err){
+        alert(err.message);
+      }).removeUser(email);
+    }
+    window.onload = function() {
+      carregarTabela();
+      if (LOGGED_IN_USER_ROLE === 'admin') {
+        loadUsers();
+        document.getElementById('add-user-form').addEventListener('submit', function(e) {
+          e.preventDefault();
+          const email = document.getElementById('new-user-email').value;
+          const role = document.getElementById('new-user-role').value;
+          google.script.run.withSuccessHandler(function(response) {
+            alert(response.message);
+            loadUsers();
+            document.getElementById('add-user-form').reset();
+          }).addOrUpdateUser(email, role);
+        });
+      }
+    };
   </script>
 </body>
 </html>

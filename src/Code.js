@@ -1,7 +1,8 @@
-// ID da planilha de dados - Verifique se é o ID correto da sua planilha
+// ID da planilha de dados
 const SHEET_ID = '1Cnb-tqz1b5uvaW4rK3rlGjlYW3QJGEaz9sKPXCzEcxY';
-const SHEET_NAME = 'Pedidos Prescrição';
-const DRIVE_FOLDER_NAME = 'Documentos Prescricao'; // Nome da pasta no Drive para guardar os docs
+const REQUESTS_SHEET_NAME = 'Pedidos Prescrição';
+const ACCESS_SHEET_NAME = 'Acessos'; // Nova folha de acessos
+const DRIVE_FOLDER_NAME = 'Documentos Prescricao';
 
 /**
  * Função principal que serve as páginas HTML do aplicativo.
@@ -12,9 +13,17 @@ function doGet(e) {
   // Define a página padrão como 'cidadao' se nenhum parâmetro for passado
   var page = e && e.parameter && e.parameter.page ? e.parameter.page : 'cidadao';
   
+  // --- LÓGICA DE SEGURANÇA ---
   if (page === 'painel') {
-    // Retorna a página do painel do atendente
-    return HtmlService.createTemplateFromFile('painel').evaluate().setTitle('Painel do Atendente');
+    const accessInfo = checkUserAccess();
+    if (accessInfo.hasAccess) {
+      const template = HtmlService.createTemplateFromFile('painel');
+      template.userEmail = accessInfo.email;
+      template.userRole = accessInfo.role;
+      return template.evaluate().setTitle('Painel do Atendente');
+    } else {
+      return HtmlService.createHtmlOutput('<h1>Acesso Negado</h1><p>Você não tem permissão para aceder a esta página.</p>');
+    }
   } else if (page === 'consulta') {
     // Retorna a página de consulta de protocolo
     return HtmlService.createTemplateFromFile('consulta').evaluate().setTitle('Consulta de Protocolo');
@@ -41,9 +50,9 @@ function include(filename) {
  */
 function submitForm(formObject) {
   try {
-    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(REQUESTS_SHEET_NAME);
     if (!sheet) {
-      throw new Error(`A planilha com o nome "${SHEET_NAME}" não foi encontrada.`);
+      throw new Error(`A planilha com o nome "${REQUESTS_SHEET_NAME}" não foi encontrada.`);
     }
 
     // --- Geração de Protocolo ---
@@ -123,7 +132,7 @@ function getOrCreateFolder(folderName) {
  * @returns {object} Os dados do protocolo ou uma mensagem de erro.
  */
 function consultarProtocolo(protocolo) {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(REQUESTS_SHEET_NAME);
   const data = sheet.getDataRange().getValues();
   // Começa do 1 para pular o cabeçalho
   for (let i = 1; i < data.length; i++) {
@@ -151,7 +160,7 @@ function consultarProtocolo(protocolo) {
  * @returns {Array<object>} Uma lista de objetos, cada um representando uma solicitação.
  */
 function getRequests() {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(REQUESTS_SHEET_NAME);
   const data = sheet.getDataRange().getValues();
   const headers = data.shift(); // Remove e armazena o cabeçalho
   
@@ -172,11 +181,15 @@ function getRequests() {
  * @param {string} protocolo O protocolo a ser atualizado.
  * @param {string} status O novo status.
  * @param {string} historico O novo registro de histórico.
- * @param {string} atendente O nome do atendente.
  * @returns {boolean} True se foi bem-sucedido, false caso contrário.
  */
-function updateStatus(protocolo, status, historico, atendente) {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+function updateStatus(protocolo, status, historico) {
+  const accessInfo = checkUserAccess();
+  if (!accessInfo.hasAccess) {
+    throw new Error('Acesso negado para esta operação.');
+  }
+  const atendente = accessInfo.email;
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(REQUESTS_SHEET_NAME);
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === protocolo) {
@@ -196,4 +209,88 @@ function updateStatus(protocolo, status, historico, atendente) {
     }
   }
   return false;
+}
+
+/**
+ * Verifica o acesso do usuário atual.
+ * @returns {object} Objeto contendo informações sobre o acesso do usuário.
+ */
+function checkUserAccess() {
+  const userEmail = Session.getActiveUser().getEmail();
+  if (!userEmail) return { hasAccess: false };
+  try {
+    const accessSheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(ACCESS_SHEET_NAME);
+    const data = accessSheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0].toLowerCase() === userEmail.toLowerCase()) {
+        return { hasAccess: true, email: userEmail, role: data[i][1] };
+      }
+    }
+    return { hasAccess: false, email: userEmail, role: null };
+  } catch (e) {
+    Logger.log('Erro ao verificar acesso: ' + e.message);
+    return { hasAccess: false, email: userEmail, role: null };
+  }
+}
+
+/**
+ * Retorna a lista de usuários com acesso (apenas para admin).
+ * @returns {Array<object>} Lista de usuários com acesso.
+ */
+function getUsers() {
+  const accessInfo = checkUserAccess();
+  if (!accessInfo.hasAccess || accessInfo.role !== 'admin') {
+    throw new Error('Acesso negado.');
+  }
+  const accessSheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(ACCESS_SHEET_NAME);
+  const data = accessSheet.getDataRange().getValues();
+  data.shift();
+  return data.map(row => ({ email: row[0], role: row[1] }));
+}
+
+/**
+ * Adiciona ou atualiza um usuário na lista de acessos (apenas para admin).
+ * @param {string} email O e-mail do usuário.
+ * @param {string} role O papel do usuário (ex: admin, atendente).
+ * @returns {object} Resultado da operação.
+ */
+function addOrUpdateUser(email, role) {
+  const accessInfo = checkUserAccess();
+  if (!accessInfo.hasAccess || accessInfo.role !== 'admin') {
+    throw new Error('Acesso negado.');
+  }
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(ACCESS_SHEET_NAME);
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0].toLowerCase() === email.toLowerCase()) {
+      sheet.getRange(i + 1, 2).setValue(role);
+      return { status: 'success', message: 'Utilizador atualizado.' };
+    }
+  }
+  sheet.appendRow([email, role]);
+  return { status: 'success', message: 'Utilizador adicionado.' };
+}
+
+/**
+ * Remove um usuário da lista de acessos (apenas para admin).
+ * @param {string} email O e-mail do usuário a ser removido.
+ * @returns {object} Resultado da operação.
+ */
+function removeUser(email) {
+  const accessInfo = checkUserAccess();
+  if (!accessInfo.hasAccess || accessInfo.role !== 'admin') {
+    throw new Error('Acesso negado.');
+  }
+  if (email.toLowerCase() === accessInfo.email.toLowerCase()) {
+    throw new Error('Não pode remover-se a si próprio.');
+  }
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(ACCESS_SHEET_NAME);
+  const data = sheet.getDataRange().getValues();
+  for (let i = data.length - 1; i > 0; i--) {
+    if (data[i][0].toLowerCase() === email.toLowerCase()) {
+      sheet.deleteRow(i + 1);
+      return { status: 'success', message: 'Utilizador removido.' };
+    }
+  }
+  throw new Error('Utilizador não encontrado.');
 }
