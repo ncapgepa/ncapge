@@ -93,7 +93,10 @@ function updateStatus(protocolo, status, historico, attusSaj) {
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === protocolo) {
-      let row = i + 1;
+      const row = i + 1;
+      const nomeContribuinte = data[i][2];
+      const emailContribuinte = data[i][3];
+      const statusAntigo = data[i][8];
       sheet.getRange(row, 9).setValue(status);
       sheet.getRange(row, 10).setValue(atendente);
       const oldHistorico = sheet.getRange(row, 11).getValue();
@@ -103,10 +106,40 @@ function updateStatus(protocolo, status, historico, attusSaj) {
       if (status === 'Deferido' || status === 'Indeferido') {
         sheet.getRange(row, 12).setValue(new Date());
       }
+      if (status !== statusAntigo) {
+        sendStatusUpdateEmail(protocolo, nomeContribuinte, emailContribuinte, status, historico);
+      }
       return true;
     }
   }
   return false;
+}
+
+/**
+ * Envia um e-mail de notificação ao contribuinte sobre a atualização do status do protocolo.
+ */
+function sendStatusUpdateEmail(protocolo, nomeContribuinte, emailContribuinte, novoStatus, observacao) {
+  try {
+    const assunto = `Atualização do seu Protocolo: ${protocolo}`;
+    const corpo = `
+      <p>Prezado(a) ${nomeContribuinte},</p>
+      <p>Houve uma atualização no seu pedido de Análise de Prescrição (protocolo <strong>${protocolo}</strong>).</p>
+      <p><strong>Novo Status:</strong> ${novoStatus}</p>
+      <p><strong>Observação do Atendente:</strong><br/>
+      <i>${observacao}</i></p>
+      <p>Você pode consultar o seu pedido a qualquer momento.</p>
+      <p>Atenciosamente,<br>
+      Equipe de Atendimento</p>
+    `;
+    MailApp.sendEmail({
+      to: emailContribuinte,
+      subject: assunto,
+      htmlBody: corpo
+    });
+    Logger.log(`Email de atualização enviado para ${emailContribuinte} sobre o protocolo ${protocolo}.`);
+  } catch (e) {
+    Logger.log(`Falha ao enviar email de atualização para ${emailContribuinte}. Erro: ${e.message}`);
+  }
 }
 
 /**
