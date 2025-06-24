@@ -1,6 +1,7 @@
 const SHEET_ID = '1Cnb-tqz1b5uvaW4rK3rlGjlYW3QJGEaz9sKPXCzEcxY';
 const REQUESTS_SHEET_NAME = 'Pedidos Prescrição';
 const ACCESS_SHEET_NAME = 'Acessos';
+const EMAIL_QUEUE_SHEET_NAME = 'EmailQueue';
 
 /**
  * Função principal que serve o painel do atendente.
@@ -85,7 +86,7 @@ function consultarProtocoloCompleto(protocolo) {
 /**
  * Atualiza o status de um pedido.
  */
-function updateStatus(protocolo, status, historico, attusSaj) {
+function updateStatus(protocolo, status, historico, attusSaj) { 
   const accessInfo = checkUserAccess();
   if (!accessInfo.hasAccess) throw new Error('Acesso negado para esta operação.');
   const atendente = accessInfo.nome;
@@ -102,12 +103,12 @@ function updateStatus(protocolo, status, historico, attusSaj) {
       const oldHistorico = sheet.getRange(row, 11).getValue();
       const newHistoricoEntry = `\n${new Date().toLocaleString()} - ${atendente}: ${historico}`;
       sheet.getRange(row, 11).setValue(oldHistorico + newHistoricoEntry);
-      sheet.getRange(row, 13).setValue(attusSaj); // NOVO: Salva o número do processo na coluna M
+      sheet.getRange(row, 13).setValue(attusSaj); 
       if (status === 'Deferido' || status === 'Indeferido') {
         sheet.getRange(row, 12).setValue(new Date());
       }
       if (status !== statusAntigo) {
-        sendStatusUpdateEmail(protocolo, nomeContribuinte, emailContribuinte, status, historico);
+        prepareEmailAndCreateTrigger(protocolo, nomeContribuinte, emailContribuinte, status, historico);
       }
       return true;
     }
@@ -115,31 +116,57 @@ function updateStatus(protocolo, status, historico, attusSaj) {
   return false;
 }
 
-/**
- * Envia um e-mail de notificação ao contribuinte sobre a atualização do status do protocolo.
- */
-function sendStatusUpdateEmail(protocolo, nomeContribuinte, emailContribuinte, novoStatus, observacao) {
+function prepareEmailAndCreateTrigger(protocolo, nomeContribuinte, emailContribuinte, novoStatus, observacao) {
   try {
-    const assunto = `Atualização do seu Protocolo: ${protocolo}`;
-    const corpo = `
-      <p>Prezado(a) ${nomeContribuinte},</p>
-      <p>Houve uma atualização no seu pedido de Análise de Prescrição (protocolo <strong>${protocolo}</strong>).</p>
-      <p><strong>Novo Status:</strong> ${novoStatus}</p>
-      <p><strong>Observação do Atendente:</strong><br/>
-      <i>${observacao}</i></p>
-      <p>Você pode consultar o seu pedido a qualquer momento.</p>
-      <p>Atenciosamente,<br>
-      Equipe de Atendimento</p>
-    `;
-    MailApp.sendEmail({
-      to: emailContribuinte,
-      subject: assunto,
-      htmlBody: corpo
-    });
-    Logger.log(`Email de atualização enviado para ${emailContribuinte} sobre o protocolo ${protocolo}.`);
-  } catch (e) {
-    Logger.log(`Falha ao enviar email de atualização para ${emailContribuinte}. Erro: ${e.message}`);
+    const emailQueueSheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(EMAIL_QUEUE_SHEET_NAME);
+    emailQueueSheet.appendRow([
+      new Date(), protocolo, nomeContribuinte, emailContribuinte, novoStatus, observacao
+    ]);
+    ScriptApp.newTrigger('processEmailQueue')
+      .timeBased()
+      .after(1)
+      .create();
+  } catch(e) {
+    Logger.log("Erro ao preparar o email para a fila: " + e.message);
   }
+}
+
+function processEmailQueue(e) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000); 
+  } catch (e) {
+    Logger.log('Não foi possível obter o bloqueio. Outro processo pode estar em execução.');
+    return;
+  }
+  const emailQueueSheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(EMAIL_QUEUE_SHEET_NAME);
+  const dataRange = emailQueueSheet.getRange("A2:F" + emailQueueSheet.getLastRow());
+  const data = dataRange.getValues();
+  if (data.length > 0 && data[0][0] !== "") {
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const protocolo = row[1], nomeContribuinte = row[2], emailContribuinte = row[3], novoStatus = row[4], observacao = row[5];
+      const assunto = `Atualização do seu Protocolo: ${protocolo}`;
+      const corpo = `<p>Prezado(a) ${nomeContribuinte},</p><p>Houve uma atualização no seu pedido de Análise de Prescrição (protocolo <strong>${protocolo}</strong>).</p><p><strong>Novo Status:</strong> ${novoStatus}</p><p><strong>Observação do Atendente:</strong><br/><i>${observacao}</i></p><p>Você pode consultar o seu pedido a qualquer momento.</p><p>Atenciosamente,<br>Equipe de Atendimento</p>`;
+      try {
+        MailApp.sendEmail({ to: emailContribuinte, subject: assunto, htmlBody: corpo, name: "PGE - Atendimento" });
+        Logger.log(`Email enviado para ${emailContribuinte} (Protocolo: ${protocolo})`);
+      } catch (err) {
+        Logger.log(`Falha ao enviar email para ${emailContribuinte}. Erro: ${err.message}`);
+      }
+    }
+    dataRange.clearContent();
+  }
+  if (e && e.triggerUid) {
+    const allTriggers = ScriptApp.getProjectTriggers();
+    for (const trigger of allTriggers) {
+      if (trigger.getUniqueId() === e.triggerUid) {
+        ScriptApp.deleteTrigger(trigger);
+        break;
+      }
+    }
+  }
+  lock.releaseLock();
 }
 
 /**
