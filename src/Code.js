@@ -233,3 +233,82 @@ function removeUser(email) {
   }
   throw new Error('Utilizador não encontrado.');
 }
+
+/**
+ * NOVA FUNÇÃO: Atualiza todos os dados de um pedido, incluindo os dados do requerente.
+ */
+function updateRequestData(dataObject) {
+  const accessInfo = checkUserAccess();
+  if (!accessInfo.hasAccess) throw new Error('Acesso negado.');
+
+  const atendente = accessInfo.nome;
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(REQUESTS_SHEET_NAME);
+  const data = sheet.getDataRange().getValues();
+  const headers = data.shift(); // Pega os cabeçalhos para encontrar os índices das colunas
+
+  const protocolIndex = headers.indexOf('Protocolo');
+  let rowIndex = -1;
+  for (let i = 0; i < data.length; i++) {
+    if (data[i][protocolIndex] === dataObject.protocolo) {
+      rowIndex = i + 2; // +1 pelo índice 0, +1 pelo cabeçalho removido
+      break;
+    }
+  }
+
+  if (rowIndex === -1) throw new Error('Protocolo não encontrado.');
+
+  const rowValues = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
+  let historyUpdates = [];
+  let needsRedirect = false;
+
+  // Função auxiliar para verificar e registar alterações
+  function checkAndUpdate(fieldName, newValue, columnIndex) {
+    const oldValue = rowValues[columnIndex];
+    if (String(oldValue).trim() !== String(newValue).trim()) {
+      sheet.getRange(rowIndex, columnIndex + 1).setValue(newValue);
+      historyUpdates.push(`${fieldName} alterado de "${oldValue}" para "${newValue}".`);
+    }
+  }
+
+  // Verifica cada campo editável
+  checkAndUpdate('NomeSolicitante', dataObject.nome, headers.indexOf('NomeSolicitante'));
+  checkAndUpdate('Email', dataObject.email, headers.indexOf('Email'));
+  checkAndUpdate('Telefone', dataObject.telefone, headers.indexOf('Telefone'));
+  checkAndUpdate('TipoPessoa', dataObject.tipo, headers.indexOf('TipoPessoa'));
+  checkAndUpdate('CDAs', dataObject.cdas, headers.indexOf('CDAs'));
+  checkAndUpdate('ATTUS/SAJ', dataObject.attusSaj, headers.indexOf('ATTUS/SAJ'));
+
+  const statusIndex = headers.indexOf('Status');
+  const oldStatus = rowValues[statusIndex];
+  if (oldStatus !== dataObject.status) {
+    sheet.getRange(rowIndex, statusIndex + 1).setValue(dataObject.status);
+    historyUpdates.push(`Status alterado de "${oldStatus}" para "${dataObject.status}".`);
+    // Adiciona à fila de envio de email se o status mudou
+    const emailQueueSheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(EMAIL_QUEUE_SHEET_NAME);
+    emailQueueSheet.appendRow([
+      new Date(), dataObject.protocolo, dataObject.nome, dataObject.email, dataObject.status, dataObject.observacao
+    ]);
+    needsRedirect = true;
+  }
+
+  // Atualiza Histórico e Atendente se houver qualquer alteração
+  if (historyUpdates.length > 0 || dataObject.observacao) {
+    const historyIndex = headers.indexOf('Historico');
+    const atendenteIndex = headers.indexOf('AtendenteResp');
+    const oldHistorico = rowValues[historyIndex] || '';
+    let newHistoricoEntry = `\n--- ATUALIZAÇÃO: ${new Date().toLocaleString()} - ${atendente} ---\n`;
+    if(dataObject.observacao) {
+      newHistoricoEntry += `Observação: ${dataObject.observacao}\n`;
+    }
+    if (historyUpdates.length > 0) {
+      newHistoricoEntry += `Alterações de Dados: \n- ${historyUpdates.join('\n- ')}`;
+    }
+    sheet.getRange(rowIndex, historyIndex + 1).setValue(oldHistorico + newHistoricoEntry);
+    sheet.getRange(rowIndex, atendenteIndex + 1).setValue(atendente);
+    if (dataObject.status === 'Deferido' || dataObject.status === 'Indeferido') {
+      const dataEncerramentoIndex = headers.indexOf('DataEncerramento');
+      sheet.getRange(rowIndex, dataEncerramentoIndex + 1).setValue(new Date());
+    }
+  }
+  return { success: true, needsRedirect: needsRedirect };
+}
