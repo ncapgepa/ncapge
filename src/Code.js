@@ -108,12 +108,16 @@ function updateStatus(protocolo, status, historico, attusSaj) {
         sheet.getRange(row, 12).setValue(new Date());
       }
       if (status !== statusAntigo) {
-        prepareEmailAndCreateTrigger(protocolo, nomeContribuinte, emailContribuinte, status, historico);
+        const emailQueueSheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(EMAIL_QUEUE_SHEET_NAME);
+        emailQueueSheet.appendRow([
+          new Date(), protocolo, nomeContribuinte, emailContribuinte, status, historico
+        ]);
+        return { success: true, needsRedirect: true };
       }
-      return true;
+      return { success: true, needsRedirect: false };
     }
   }
-  return false;
+  return { success: false };
 }
 
 function prepareEmailAndCreateTrigger(protocolo, nomeContribuinte, emailContribuinte, novoStatus, observacao) {
@@ -140,6 +144,10 @@ function processEmailQueue(e) {
     return;
   }
   const emailQueueSheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(EMAIL_QUEUE_SHEET_NAME);
+  if (emailQueueSheet.getLastRow() < 2) {
+    lock.releaseLock();
+    return;
+  }
   const dataRange = emailQueueSheet.getRange("A2:F" + emailQueueSheet.getLastRow());
   const data = dataRange.getValues();
   if (data.length > 0 && data[0][0] !== "") {

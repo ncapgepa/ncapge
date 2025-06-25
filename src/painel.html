@@ -147,21 +147,33 @@
     function salvarAlteracoes(protocolo) {
       var status = document.getElementById('novo-status').value;
       var observacao = document.getElementById('nova-observacao').value;
-      var attusSaj = document.getElementById('attus-saj').value; // NOVO: Captura o valor
-      var btn = document.querySelector("button[onclick^='salvarAlteracoes']");
+      var attusSaj = document.getElementById('attus-saj').value;
       if (!observacao) {
           alert('Por favor, adicione uma observação sobre a alteração.');
           return;
       }
-      if (btn) btn.disabled = true;
-      google.script.run.withSuccessHandler(function() {
-        alert('Alterações salvas com sucesso!');
-        document.getElementById('detalhes').style.display = 'none';
-        carregarTabela();
-        if (btn) btn.disabled = false;
-      }).withFailureHandler(function() {
-        if (btn) btn.disabled = false;
-      }).updateStatus(protocolo, status, observacao, attusSaj); // NOVO: Envia o valor
+      var btn = event.target;
+      btn.disabled = true;
+      btn.textContent = 'Salvando...';
+      google.script.run
+        .withSuccessHandler(function(response) {
+          btn.disabled = false;
+          btn.textContent = 'Salvar Alterações';
+          alert('Alterações salvas com sucesso!');
+          if (response && response.needsRedirect) {
+            // **IMPORTANTE**: Substitua pela URL do seu NOVO projeto de envio de email
+            const emailSenderUrl = 'https://script.google.com/macros/s/AKfycbyAfKdmWfuiqb6J_5sr5LkD78hGlsZe7mosjP3XbBrr3rbA_p467hMmB76sDnrc7EEhWg/exec';
+            window.open(emailSenderUrl, '_blank', 'width=300,height=200');
+          }
+          document.getElementById('detalhes').style.display = 'none';
+          carregarTabela(); 
+        })
+        .withFailureHandler(function(err) {
+            btn.disabled = false;
+            btn.textContent = 'Salvar Alterações';
+            alert('Ocorreu um erro: ' + err.message);
+        })
+        .updateStatus(protocolo, status, observacao, attusSaj);
     }
 
     // NOVO: Função para a máscara do campo ATTUS/SAJ
