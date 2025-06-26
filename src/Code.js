@@ -312,3 +312,56 @@ function updateRequestData(dataObject) {
   }
   return { success: true, needsRedirect: needsRedirect };
 }
+
+/**
+ * NOVA FUNÇÃO: Gera um PDF com os detalhes do protocolo.
+ */
+function generateProtocolPdf(protocolo) {
+  const dados = consultarProtocoloCompleto(protocolo);
+  if (dados.erro) {
+    throw new Error('Não foi possível gerar o PDF: ' + dados.erro);
+  }
+  const htmlContent = `
+    <html>
+      <head>
+        <style>
+          body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 11px; }
+          h1 { color: #333; border-bottom: 2px solid #ccc; padding-bottom: 5px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background-color: #f2f2f2; }
+          pre { background-color: #f8f8f8; padding: 10px; border: 1px solid #eee; white-space: pre-wrap; word-wrap: break-word; }
+        </style>
+      </head>
+      <body>
+        <h1>Relatório do Protocolo: ${dados.protocolo}</h1>
+        <h3>Dados do Requerente</h3>
+        <table>
+          <tr><th>Nome</th><td>${dados.nome}</td></tr>
+          <tr><th>E-mail</th><td>${dados.email}</td></tr>
+          <tr><th>Telefone</th><td>${dados.telefone}</td></tr>
+          <tr><th>Tipo de Requerente</th><td>${dados.tipo}</td></tr>
+        </table>
+        <h3>Dados do Pedido</h3>
+        <table>
+          <tr><th>Data da Solicitação</th><td>${dados.data}</td></tr>
+          <tr><th>Status Atual</th><td>${dados.status}</td></tr>
+          <tr><th>Nº Processo ATTUS/SAJ</th><td>${dados.attusSaj || 'Não informado'}</td></tr>
+          <tr><th>CDAs</th><td>${dados.cdas}</td></tr>
+        </table>
+        <h3>Histórico Completo</h3>
+        <pre>${dados.historico || 'Nenhum histórico registado.'}</pre>
+        <p style="text-align:center; color:#777; font-size:9px; margin-top: 30px;">
+          Documento gerado pelo SisNCA em ${new Date().toLocaleString()}
+        </p>
+      </body>
+    </html>
+  `;
+  const blob = Utilities.newBlob(htmlContent, MimeType.HTML).getAs(MimeType.PDF);
+  blob.setName(`Protocolo_${dados.protocolo}.pdf`);
+  return {
+    fileName: blob.getName(),
+    contentType: blob.getContentType(),
+    fileContent: Utilities.base64Encode(blob.getBytes())
+  };
+}
