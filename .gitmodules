@@ -1,6 +1,0 @@
-[submodule "Atendimento"]
-	path = Atendimento
-	url = https://github.com/ncapgepa/sisnca
-[submodule "Cidadao"]
-	path = Cidadao
-	url = https://github.com/ncapgepa/sisnca-cidadao
