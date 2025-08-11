@@ -59,6 +59,10 @@
       font-size: 1.2em;
       transition: transform 0.3s;
     }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
@@ -165,6 +169,10 @@
         });
     }
     function verDetalhes(protocolo) {
+      // Exibe indicador de carregamento
+      var detalhesDiv = document.getElementById('detalhes');
+      detalhesDiv.style.display = 'block';
+      detalhesDiv.innerHTML = '<div style="text-align:center;padding:30px 0;">Carregando detalhes... <span class="loader" style="display:inline-block;width:18px;height:18px;border:3px solid #00796b;border-top:3px solid #e0f2f1;border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle;"></span></div>';
       google.script.run.withSuccessHandler(function(dados) {
         if (dados.erro) {
             alert(dados.erro);
