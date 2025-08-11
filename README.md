@@ -53,7 +53,34 @@ O projeto utiliza as seguintes permissões:
 - O projeto está configurado para rodar na timezone America/Sao_Paulo.
 - O acesso ao webapp está liberado para qualquer usuário anônimo.
 
-### 3. Recomendações Gerais
+### 3. Informações sobre a Planilha Google e a Pasta no Drive
+
+#### Estrutura da Planilha Google
+A planilha utilizada pelo sistema deve conter uma aba chamada **Pedidos Prescrição** com as seguintes colunas:
+
+| Coluna           | Descrição                                                                                                    | Exemplo de Conteúdo                                      |
+|------------------|-------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|
+| Protocolo        | Gerado automaticamente pelo sistema. Único e não editável.                                                  | PGE-PRESC-2024-0001                                      |
+| Timestamp        | Data e hora do envio do formulário. Preenchido automaticamente.                                             | 23/06/2024 14:30:15                                      |
+| NomeSolicitante  | Nome do Titular ou Representante Legal.                                                                     | José da Silva                                            |
+| Email            | E-mail de contato.                                                                                          | jose.silva@email.com                                     |
+| Telefone         | Telefone de contato com DDD.                                                                                | (91) 99999-8888                                          |
+| TipoPessoa       | Tipo de pessoa (Pessoa Física, Empresário, Sócio, Procurador).                                              | Pessoa Física                                            |
+| CDAs             | Números das CDAs, separados por vírgula.                                                                    | 12345, 67890, 11223                                      |
+| LinkDocumentos   | Link para a pasta no Google Drive com os documentos do solicitante.                                         | https://drive.google.com/drive/folders/123xyz...         |
+| Status           | Status atual do pedido. Controlado pelo atendente.                                                          | Novo, Em Análise, Pendente, Deferido, Indeferido         |
+| AtendenteResp    | Nome do atendente que está com o caso.                                                                      | Maria Souza                                              |
+| Historico        | Registros de cada mudança de status e observações internas.                                                 | 24/06: Análise inicial. 25/06: Documentação pendente.    |
+| DataEncerramento | Data em que o status foi mudado para Deferido/Indeferido.                                                   | 30/06/2024                                               |
+
+Cada linha representa um pedido único realizado pelo Portal do Cidadão. Os campos são utilizados tanto para acompanhamento pelo solicitante quanto para gestão interna pelo atendente.
+
+#### Pasta no Google Drive
+- Para cada solicitação, é criada uma pasta no Google Drive para armazenar os documentos enviados pelo solicitante.
+- O link para essa pasta deve ser registrado na coluna **LinkDocumentos** da planilha.
+- Recomenda-se organizar as pastas por protocolo ou nome do solicitante para facilitar a localização e auditoria.
+
+### 4. Recomendações Gerais
 - Consulte este README para instruções detalhadas de uso e configuração.
 - Para dúvidas ou problemas, entre em contato com o responsável pelo projeto.
 
