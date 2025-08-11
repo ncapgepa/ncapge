@@ -33,5 +33,22 @@ Ao receber um comando abreviado realize a sequência de comandos descritas.
 - Sequência de comandos:
   - cd Email
   - clasp push
-  - clasp deploy --deploymentId AKfycbxvkce95ZEE84wqed5ltl1ZgkHyt4CGyPzMiq-zHJfXkHyL01X70xWU0Ot14scMd3sW --description "Deploy automático do Email"
+  - clasp deploy --deploymentId AKfycbyAfKdmWfuiqb6J_5sr5LkD78hGlsZe7mosjP3XbBrr3rbA_p467hMmB76sDnrc7EEhWg --description "Deploy automático do Email"
+
+- Comando: dpl-all
+- Ação: Realiza commit, push e deploy de todos os módulos (Atendimento, Cidadao e Email) em sequência.
+- Sequência de comandos:
+  - git add .
+  - git commit -m "<<comentário>>" (<<comentário>> deve ser a descrição do que foi atualizado no sistema)
+  - git push
+  - cd Atendimento
+  - clasp push
+  - clasp deploy --deploymentId AKfycbxOwmw_yCfIsvi5hEp5_ZT5ondud-0mYb81-7ii_u-R37QS3LDXv8BHZfk7FAlrfbom7A --description "<<comentário>>"
+  - cd ../Cidadao
+  - clasp push
+  - clasp deploy --deploymentId AKfycbxvkce95ZEE84wqed5ltl1ZgkHyt4CGyPzMiq-zHJfXkHyL01X70xWU0Ot14scMd3sW --description "<<comentário>>"
+  - cd ../Email
+  - clasp push
+  - clasp deploy --deploymentId AKfycbyAfKdmWfuiqb6J_5sr5LkD78hGlsZe7mosjP3XbBrr3rbA_p467hMmB76sDnrc7EEhWg --description "<<comentário>>"
+  - cd ..
 
